@@ -41,8 +41,10 @@ sed -i 's/server 2.debian.pool.ntp.org offline minpoll 8/ \
 sed -i 's/server 3.debian.pool.ntp.org offline minpoll 8/ \
 # server 3.debian.pool.ntp.org offline minpoll 8/g' $ntpfile
 
-echocolor "Installl package for NOVA"
+
 sleep 5
+echocolor "Installl package for NOVA"
+
 apt-get -y install nova-compute
 # echo "libguestfs-tools libguestfs/update-appliance boolean true" \
 #    | debconf-set-selections
@@ -52,6 +54,7 @@ apt-get -y install nova-compute
 # update-guestfs-appliance
 # chmod 0644 /boot/vmlinuz*
 # usermod -a -G kvm root
+
 
 echocolor "Configuring in nova.conf"
 sleep 5
@@ -127,63 +130,21 @@ service nova-compute restart
 # Remove default nova db
 rm /var/lib/nova/nova.sqlite
 
-echocolor "Install openvswitch-agent (neutron) on COMPUTE NODE"
+
+cat << EOF >> /etc/libvirt/qemu.conf
+user = "root"
+group = "root"
+
+cgroup_device_acl = [
+    "/dev/null", "/dev/full", "/dev/zero",
+    "/dev/random", "/dev/urandom",
+    "/dev/ptmx", "/dev/kvm", "/dev/kqemu",
+    "/dev/rtc","/dev/hpet", "/dev/vfio/vfio",
+    "/dev/net/tun"
+]
+EOF
+
+echocolor "libvirt-bin COMPUTE NODE"
 sleep 5
-
-apt-get -y install neutron-plugin-openvswitch-agent neutron-common neutron-plugin-ml2 ipset
-
-
-echocolor "Config file neutron.conf"
-neutron_com=/etc/neutron/neutron.conf
-test -f $neutron_com.orig || cp $neutron_com $neutron_com.orig
-
-## [DEFAULT] section
-ops_edit $neutron_com DEFAULT core_plugin ml2
-ops_edit $neutron_com DEFAULT rpc_backend rabbit
-ops_edit $neutron_com DEFAULT auth_strategy keystone
-
-## [keystone_authtoken] section
-ops_edit $neutron_com keystone_authtoken auth_uri http://$CTL_MGNT_IP:5000
-ops_edit $neutron_com keystone_authtoken auth_url http://$CTL_MGNT_IP:35357
-ops_edit $neutron_com keystone_authtoken memcached_servers $CTL_MGNT_IP:11211
-ops_edit $neutron_com keystone_authtoken auth_type password
-ops_edit $neutron_com keystone_authtoken project_domain_name default
-ops_edit $neutron_com keystone_authtoken user_domain_name default
-ops_edit $neutron_com keystone_authtoken project_name service
-ops_edit $neutron_com keystone_authtoken username neutron
-ops_edit $neutron_com keystone_authtoken password $NEUTRON_PASS
-
-
-## [database] section
-ops_del $neutron_com database connection
-
-## [oslo_messaging_rabbit] section
-ops_edit $neutron_com oslo_messaging_rabbit rabbit_host $CTL_MGNT_IP
-ops_edit $neutron_com oslo_messaging_rabbit rabbit_userid openstack
-ops_edit $neutron_com oslo_messaging_rabbit rabbit_password $RABBIT_PASS
-
-
-echocolor "Configuring openvswitch_agent"
-sleep 5
-########
-ovsfile=/etc/neutron/plugins/ml2/openvswitch_agent.ini
-test -f $ovsfile.orig || cp $ovsfile $ovsfile.orig
-
-# [agent] section
-ops_edit $ovsfile agent tunnel_types gre
-ops_edit $ovsfile agent l2_population True
-
-
-## [securitygroup] section
-ops_edit $ovsfile securitygroup firewall_driver \
-     neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
-
-## [ovs] section
-ops_edit $ovsfile ovs local_ip $COM1_MGNT_IP
-ops_edit $ovsfile ovs enable_tunneling True
-
-echocolor "Reset service nova-compute,openvswitch_agent"
-sleep 5
-service nova-compute restart
-service neutron-openvswitch-agent restart
+service libvirt-bin restart
 

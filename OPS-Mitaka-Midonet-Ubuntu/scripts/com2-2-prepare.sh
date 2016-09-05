@@ -41,8 +41,10 @@ sed -i 's/server 2.debian.pool.ntp.org offline minpoll 8/ \
 sed -i 's/server 3.debian.pool.ntp.org offline minpoll 8/ \
 # server 3.debian.pool.ntp.org offline minpoll 8/g' $ntpfile
 
-echocolor "Installl package for NOVA"
+
 sleep 5
+echocolor "Installl package for NOVA"
+
 apt-get -y install nova-compute
 # echo "libguestfs-tools libguestfs/update-appliance boolean true" \
 #    | debconf-set-selections
@@ -52,6 +54,7 @@ apt-get -y install nova-compute
 # update-guestfs-appliance
 # chmod 0644 /boot/vmlinuz*
 # usermod -a -G kvm root
+
 
 echocolor "Configuring in nova.conf"
 sleep 5
@@ -63,7 +66,7 @@ test -f $nova_com.orig || cp $nova_com $nova_com.orig
 ## [DEFAULT] Section
 ops_edit $nova_com DEFAULT rpc_backend rabbit
 ops_edit $nova_com DEFAULT auth_strategy keystone
-ops_edit $nova_com DEFAULT my_ip $COM1_MGNT_IP
+ops_edit $nova_com DEFAULT my_ip $COM2_MGNT_IP
 ops_edit $nova_com DEFAULT use_neutron  True
 ops_edit $nova_com DEFAULT \
     firewall_driver nova.virt.firewall.NoopFirewallDriver
@@ -130,7 +133,7 @@ rm /var/lib/nova/nova.sqlite
 echocolor "Install openvswitch-agent (neutron) on COMPUTE NODE"
 sleep 5
 
-apt-get -y install neutron-plugin-openvswitch-agent neutron-common neutron-plugin-ml2 ipset
+apt-get -y install  neutron-plugin-openvswitch-agent 
 
 
 echocolor "Config file neutron.conf"
@@ -170,7 +173,7 @@ ovsfile=/etc/neutron/plugins/ml2/openvswitch_agent.ini
 test -f $ovsfile.orig || cp $ovsfile $ovsfile.orig
 
 # [agent] section
-ops_edit $ovsfile agent tunnel_types gre
+ops_edit $ovsfile agent tunnel_types gre,vxlan
 ops_edit $ovsfile agent l2_population True
 
 
@@ -179,8 +182,7 @@ ops_edit $ovsfile securitygroup firewall_driver \
      neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
 
 ## [ovs] section
-ops_edit $ovsfile ovs local_ip $COM1_MGNT_IP
-ops_edit $ovsfile ovs enable_tunneling True
+ops_edit $ovsfile ovs local_ip $COM2_MGNT_IP
 
 echocolor "Reset service nova-compute,openvswitch_agent"
 sleep 5
