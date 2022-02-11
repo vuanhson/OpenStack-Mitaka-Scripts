@@ -36,6 +36,9 @@ sed -i 's/server 2.debian.pool.ntp.org offline minpoll 8/ \
 sed -i 's/server 3.debian.pool.ntp.org offline minpoll 8/ \
 # server 3.debian.pool.ntp.org offline minpoll 8/g' $ntpfile
 
+# restart chrony after config
+/etc/init.d/chrony restart
+
 ##############################################
 echocolor "Install and Config RabbitMQ"
 sleep 3
@@ -56,6 +59,7 @@ echo mysql-server mysql-server/root_password password \
 $MYSQL_PASS | debconf-set-selections
 echo mysql-server mysql-server/root_password_again password \
 $MYSQL_PASS | debconf-set-selections
+
 apt-get -y install mariadb-server python-mysqldb curl
 
 echocolor "Configuring MYSQL"
